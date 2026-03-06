@@ -1,0 +1,2 @@
+py-trees==2.4.0
+aiohttp==3.13.3
