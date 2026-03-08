@@ -43,7 +43,7 @@ class BN_ForwardRandom(pt.behaviour.Behaviour):
 
     def initialise(self):
         self.logger.debug("Create Goals_BT.ForwardDist task")
-        self.my_goal = asyncio.create_task(Goals_BT_Basic.ForwardDist(self.my_agent, -1, 1, 5).run())
+        self.my_goal = asyncio.create_task(Goals_BT_Basic.ForwardDist(self.my_agent, 0.6, 1.0, 5).run())
 
     def update(self):
         if not self.my_goal.done():
@@ -107,16 +107,40 @@ class BN_DetectFlower(pt.behaviour.Behaviour):
         for index, value in enumerate(sensor_obj_info):
             if value:  # there is a hit with an object
                 if value["tag"] == "AlienFlower":  # If it is a flower
-                    # print("Flower detected!")
-                    # print("BN_DetectFlower completed with SUCCESS")
+                    print("Flower detected!")
+                    print("BN_DetectFlower completed with SUCCESS")
                     return pt.common.Status.SUCCESS
-        # print("No flower...")
-        # print("BN_DetectFlower completed with FAILURE")
+        print("No flower...")
+        print("BN_DetectFlower completed with FAILURE")
         return pt.common.Status.FAILURE
 
     def terminate(self, new_status: common.Status):
         pass
 
+class BN_GoToFlower(pt.behaviour.Behaviour):
+    def __init__(self, aagent):
+        self.my_agent = aagent
+        self.my_goal = None
+        # print("Initializing BN_GoToFlower")
+        super(BN_GoToFlower, self).__init__("BN_GoToFlower")
+
+    def initialise(self):
+        self.my_goal = asyncio.create_task(Goals_BT_Basic.GoToFlower(self.my_agent).run())
+
+    def update(self):
+        if not self.my_goal.done():
+            return pt.common.Status.RUNNING
+        else:
+            if self.my_goal.result():
+                # print("BN_GoToFlower completed with SUCCESS")
+                return pt.common.Status.SUCCESS
+            else:
+                # print("BN_GoToFlower completed with FAILURE")
+                return pt.common.Status.FAILURE
+
+    def terminate(self, new_status: common.Status):
+        # Finishing the behaviour, therefore we have to stop the associated task
+        self.my_goal.cancel()
 
 class BTRoam:
     def __init__(self, aagent):
@@ -136,12 +160,12 @@ class BTRoam:
 
         # VERSION 3 (with DetectFlower)
         detection = pt.composites.Sequence(name="DetectFlower", memory=True)
-        detection.add_children([BN_DetectFlower(aagent), BN_DoNothing(aagent)])
+        detection.add_children([BN_DetectFlower(aagent), BN_GoToFlower(aagent)])
 
-        roaming = pt.composites.Parallel("Parallel", policy=py_trees.common.ParallelPolicy.SuccessOnAll())
+        roaming = pt.composites.Sequence("Roaming", memory=True)
         roaming.add_children([BN_ForwardRandom(aagent), BN_TurnRandom(aagent)])
 
-        self.root = pt.composites.Selector(name="Selector", memory=False)
+        self.root = pt.composites.Selector(name="Selector", memory=True)
         self.root.add_children([detection, roaming])
 
 
@@ -161,3 +185,4 @@ class BTRoam:
     async def tick(self):
         self.behaviour_tree.tick()
         await asyncio.sleep(0)
+
