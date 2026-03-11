@@ -40,7 +40,7 @@ class BN_ForwardRandom(pt.behaviour.Behaviour):
 
     def initialise(self):
         self.logger.debug("Create Goals_BT.ForwardDist task")
-        self.my_goal = asyncio.create_task(Goals_BT_Basic.ForwardDist(self.my_agent, 0.6, 1.0, 5).run())
+        self.my_goal = asyncio.create_task(Goals_BT_Basic.ForwardDist(self.my_agent, 0.6, 3, 6).run())
 
     def update(self):
         if not self.my_goal.done():

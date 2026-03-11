@@ -106,8 +106,14 @@ class ForwardDist:
                     current_dist = calculate_distance(self.starting_pos, self.i_state.position)
                     print(f"Current distance: {current_dist}")
                     if current_dist >= self.target_dist:  # Check if we already have covered the required distance
-                        await self.a_agent.send_message("action", "stop")
-                        self.state = self.STOPPED
+                        # await self.a_agent.send_message("action", "stop")
+                        # self.state = self.STOPPED
+                        # return True
+                        self.starting_pos = dict(self.i_state.position)
+                        if self.original_dist < 0:
+                            self.target_dist = random.randint(self.d_min, self.d_max)
+                        else:
+                            self.target_dist = self.original_dist
                         return True
                     elif abs(previous_dist - current_dist) < 0.001:  # We are not moving
                         print(f"previous dist: {previous_dist}, current dist: {current_dist}")
