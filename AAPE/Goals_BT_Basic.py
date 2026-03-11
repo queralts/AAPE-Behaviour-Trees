@@ -10,6 +10,7 @@ def calculate_distance(point_a, point_b):
                          (point_b['z'] - point_a['z']) ** 2)
     return distance
 
+
 class DoNothing:
     """
     Does nothing
@@ -23,7 +24,7 @@ class DoNothing:
         print("Doing nothing")
         await asyncio.sleep(1)
         return True
-
+    
 class ForwardStop:
     """
         Moves forward till it finds an obstacle. Then stops.
@@ -124,64 +125,72 @@ class ForwardDist:
             self.state = self.STOPPED
 
 class Turn:
-    """
-    Repeats the action of turning a random number of degrees in a random
-    direction (right or left)
-    """
-    LEFT = -1
-    RIGHT = 1
-
-    SELECTING = 0
-    TURNING = 1
-
     def __init__(self, a_agent):
         self.a_agent = a_agent
         self.rc_sensor = a_agent.rc_sensor
-        self.i_state = a_agent.i_state
-
-        self.current_heading = 0
-        self.new_heading = 0
-
-        self.state = self.SELECTING
 
     async def run(self):
         try:
-            while True:
-                if self.state == self.SELECTING:
-                    print("SELECTING NEW TURN")
-                    rotation_direction = random.choice([-1, 1])
-                    print(f"Rotation direction: {rotation_direction}")
-                    rotation_degrees = random.uniform(1, 180) * rotation_direction
-                    print("Degrees: " + str(rotation_degrees))
-                    current_heading = self.i_state.rotation["y"]
-                    print(f"Current heading: {current_heading}")
-                    self.new_heading = (current_heading + rotation_degrees) % 360
-                    if self.new_heading == 360:
-                        self.new_heading = 0.0
-                    print(f"New heading: {self.new_heading}")
-                    if rotation_direction == self.RIGHT:
-                        await self.a_agent.send_message("action", "tr")
-                    else:
-                        await self.a_agent.send_message("action", "tl")
-                    self.state = self.TURNING
-                elif self.state == self.TURNING:
-                    # check if we have finished the rotation
-                    current_heading = self.i_state.rotation["y"]
-                    diff = abs(current_heading - self.new_heading)
-                    final_condition = min(diff, 360 - diff)
-                    if final_condition < 5:
-                        await self.a_agent.send_message("action", "nt")
-                        current_heading = self.i_state.rotation["y"]
-                        print(f"Current heading: {current_heading}")
-                        print("TURNING DONE.")
-                        self.state = self.SELECTING
-                        return True
-                await asyncio.sleep(0)
-        except asyncio.CancelledError:
-            print("***** TASK Turn CANCELLED")
-            await self.a_agent.send_message("action", "nt")
+            sensor = self.rc_sensor
+            central = sensor.central_ray_index
 
-class GoToFlower():
+            left_rays  = range(0, central)
+            right_rays = range(central + 1, sensor.num_rays)
+
+            def free_space(indices):
+                total = 0
+                for i in indices:
+                    dist = sensor.sensor_rays[Sensors.RayCastSensor.DISTANCE][i]
+                    total += sensor.ray_length if dist == -1 else dist
+                return total
+
+            def max_consecutive_hits():
+                max_consec = 0
+                current = 0
+                for i in range(sensor.num_rays):
+                    hit = sensor.sensor_rays[Sensors.RayCastSensor.HIT][i]
+                    obj_info = sensor.sensor_rays[Sensors.RayCastSensor.OBJECT_INFO][i]
+                    is_flower = obj_info and obj_info.get("tag") == "AlienFlower"
+                    if hit and not is_flower:
+                        current += 1
+                        max_consec = max(max_consec, current)
+                    else:
+                        current = 0
+                return max_consec
+
+            # Sin parámetros y sin all_rays
+            if max_consecutive_hits() < 2:
+                return True
+
+            # Decidir hacia dónde girar
+            left_space  = free_space(left_rays)
+            right_space = free_space(right_rays)
+
+            if left_space == right_space:
+                action = random.choice(["tr", "tl"])
+            elif right_space > left_space:
+                action = "tr"
+            else:
+                action = "tl"
+
+            # Girar con timeout máximo
+            await self.a_agent.send_message("action", action)
+            max_time = 2.0
+            elapsed = 0.0
+            while elapsed < max_time:
+                await asyncio.sleep(0.2)
+                elapsed += 0.2
+                if max_consecutive_hits() < 2:
+                    break
+
+            await self.a_agent.send_message("action", "nt")
+            return True
+
+        except asyncio.CancelledError:
+            await self.a_agent.send_message("action", "nt")
+            return False
+
+class GoToFlower:
     DETECTING = 0
     TURNING = 1
     MOVING = 2
@@ -218,6 +227,9 @@ class GoToFlower():
                                 self.state = self.TURNING
                                 break
                     
+                    if not flower_found:
+                        return False
+                    
                     await asyncio.sleep(0)
 
                 elif self.state==self.TURNING:
@@ -249,10 +261,11 @@ class GoToFlower():
                         await self.a_agent.send_message("action", "nt")
                         return False
 
-                    await asyncio.sleep(0)
+                    await asyncio.sleep(0.1)
 
                 elif self.state == self.MOVING:
                     print("MOVING TOWARDS FLOWER")
+
 
                     flower_found = False
                     reached = False
@@ -270,12 +283,13 @@ class GoToFlower():
                                 if distance < self.threshold:
                                     reached = True
                                 
-                                break
+                                break 
                     
                     # Check if we reached the flower or already picked it
                     if reached or not flower_found:
                         await self.a_agent.send_message("action", "ntm")
                         return True
+                    
                     
                     # Flower found but still far
                     await asyncio.sleep(0)
@@ -284,3 +298,19 @@ class GoToFlower():
             print("***** TASK GoToFlower CANCELLED")
             await self.a_agent.send_message("action", "nt")
             await self.a_agent.send_message("action", "stop")
+
+class ReturnToBase:
+    def __init__(self, a_agent):
+        self.a_agent = a_agent
+
+    async def run(self):
+        try:
+            print("RETURNING TO BASE")
+            await self.a_agent.send_message("action", "teleport_to,BaseAlpha")
+            await asyncio.sleep(1.0)  # esperar a que llegue
+            print("UNLOADING FLOWERS")
+            await self.a_agent.send_message("action", "leave,AlienFlower,2")
+            await asyncio.sleep(0.5)
+            return True
+        except asyncio.CancelledError:
+            return False
