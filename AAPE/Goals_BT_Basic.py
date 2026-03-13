@@ -308,12 +308,34 @@ class GoToFlower:
 class ReturnToBase:
     def __init__(self, a_agent):
         self.a_agent = a_agent
+        self.i_state = a_agent.i_state
 
     async def run(self):
         try:
-            print("RETURNING TO BASE")
-            await self.a_agent.send_message("action", "teleport_to,BaseAlpha")
-            await asyncio.sleep(1.0)  # esperar a que llegue
+            print("RETURNING TO BASE BY WALKING")
+            await self.a_agent.send_message("action", "walk_to,BaseAlpha")
+
+            timeout = 15.0
+            elapsed = 0.0
+            step = 0.2 
+
+            while elapsed < timeout:
+                # reached destination
+                if self.i_state.currentNamedLoc == "BaseAlpha":
+                    break
+
+                # navmesh route finished
+                if self.i_state.targetNamedLoc == "BaseAlpha" and not self.i_state.onRoute:
+                    break
+
+                await asyncio.sleep(step)
+                elapsed += step
+
+            if self.i_state.currentNamedLoc != "BaseAlpha" and self.i_state.onRoute:
+                print("Teleporting to base")
+                await self.a_agent.send_message("action", "teleport_to,BaseAlpha")
+                await asyncio.sleep(1.0)
+
             print("UNLOADING FLOWERS")
             await self.a_agent.send_message("action", "leave,AlienFlower,2")
             await asyncio.sleep(0.5)
