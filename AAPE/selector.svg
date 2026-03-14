@@ -12,8 +12,8 @@
 <!-- Selector -->
 <g id="node1" class="node">
 <title>Selector</title>
-<polygon fill="cyan" stroke="black" points="268.98,-298.54 268.98,-313.46 252.54,-324 229.28,-324 212.83,-313.46 212.83,-298.54 229.28,-288 252.54,-288 268.98,-298.54"/>
-<text xml:space="preserve" text-anchor="middle" x="240.91" y="-302.7" font-family="Times,serif" font-size="9.00">Selector</text>
+<polygon fill="cyan" stroke="black" points="276.08,-298.54 276.08,-313.46 255.48,-324 226.34,-324 205.74,-313.46 205.74,-298.54 226.34,-288 255.48,-288 276.08,-298.54"/>
+<text xml:space="preserve" text-anchor="middle" x="240.91" y="-302.7" font-family="Times,serif" font-size="9.00">Ⓜ Selector</text>
 </g>
 <!-- Full -->
 <g id="node2" class="node">
@@ -24,8 +24,8 @@
 <!-- Selector&#45;&gt;Full -->
 <g id="edge1" class="edge">
 <title>Selector&#45;&gt;Full</title>
-<path fill="none" stroke="black" d="M228.32,-288.05C222.4,-280.09 215.21,-270.41 208.6,-261.51"/>
-<polygon fill="black" stroke="black" points="211.42,-259.43 202.64,-253.49 205.8,-263.6 211.42,-259.43"/>
+<path fill="none" stroke="black" d="M228.05,-287.7C222.13,-279.73 214.98,-270.1 208.42,-261.26"/>
+<polygon fill="black" stroke="black" points="211.29,-259.26 202.52,-253.32 205.67,-263.43 211.29,-259.26"/>
 </g>
 <!-- NotFull -->
 <g id="node5" class="node">
@@ -36,8 +36,8 @@
 <!-- Selector&#45;&gt;NotFull -->
 <g id="edge4" class="edge">
 <title>Selector&#45;&gt;NotFull</title>
-<path fill="none" stroke="black" d="M253.47,-288.41C259.8,-280.04 267.63,-269.71 274.7,-260.37"/>
-<polygon fill="black" stroke="black" points="277.28,-262.76 280.52,-252.68 271.7,-258.54 277.28,-262.76"/>
+<path fill="none" stroke="black" d="M254.01,-287.7C260.2,-279.52 267.71,-269.6 274.54,-260.58"/>
+<polygon fill="black" stroke="black" points="277.16,-262.91 280.41,-252.83 271.58,-258.69 277.16,-262.91"/>
 </g>
 <!-- BN_CheckInventoryFull -->
 <g id="node3" class="node">

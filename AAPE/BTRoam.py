@@ -275,7 +275,7 @@ class BTRoam:
         not_full = pt.composites.Selector("NotFull", memory=False)
         not_full.add_children([detection, roaming])
 
-        self.root = pt.composites.Selector(name="Selector", memory=False)
+        self.root = pt.composites.Selector(name="Selector", memory=True)
         self.root.add_children([full, not_full])
 
         self.behaviour_tree = pt.trees.BehaviourTree(self.root)

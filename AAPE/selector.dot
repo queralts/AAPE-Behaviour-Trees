@@ -3,7 +3,7 @@ ordering=out;
 graph [fontname="times-roman"];
 node [fontname="times-roman"];
 edge [fontname="times-roman"];
-Selector [label=Selector, shape=octagon, style=filled, fillcolor=cyan, fontsize=9, fontcolor=black];
+Selector [label="Ⓜ Selector", shape=octagon, style=filled, fillcolor=cyan, fontsize=9, fontcolor=black];
 Full [label="Ⓜ Full", shape=box, style=filled, fillcolor=orange, fontsize=9, fontcolor=black];
 Selector -> Full;
 BN_CheckInventoryFull [label="BN_CheckInventoryFull", shape=ellipse, style=filled, fillcolor=gray, fontsize=9, fontcolor=black];

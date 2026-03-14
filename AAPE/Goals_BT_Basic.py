@@ -312,6 +312,7 @@ class ReturnToBase:
 
     async def run(self):
         try:
+            await self.a_agent.send_message("action", "ntm")
             print("RETURNING TO BASE BY WALKING")
             await self.a_agent.send_message("action", "walk_to,BaseAlpha")
 
@@ -389,7 +390,7 @@ class Avoid:
                 if -30 <= ray[Sensors.RayCastSensor.ANGLE] <= 30:
                     front_sensors.append(ray)
 
-            if any(ray[0] == 1 for ray in front_sensors):
+            if any(ray[Sensors.RayCastSensor.HIT] == 1 for ray in front_sensors):
                 await asyncio.sleep(0)
             else:
                 break
@@ -408,7 +409,7 @@ class Avoid:
                             if -30 <= ray[Sensors.RayCastSensor.ANGLE] <= 30:
                                 front_sensors.append(ray)
                         
-                        if any(ray[0] == 1 for ray in front_sensors):
+                        if any(ray[Sensors.RayCastSensor.HIT] == 1 for ray in front_sensors):
                             await self.turn_until_clear()
                         else:
                             break
@@ -420,13 +421,20 @@ class Avoid:
                     self.state = self.MOVING
 
                 elif self.state == self.MOVING:
+
+                    # Probability of turning randomly    
+                    if random.random() < 0.01:
+                        await self.a_agent.send_message("action", random.choice(["tl","tr"]))
+                        await asyncio.sleep(0.5)
+                        await self.a_agent.send_message("action", "nt")
+
                     while True:
                         front_sensors = []
                         for index, ray in enumerate(zip(*self.rc_sensor.sensor_rays)):
                             if -30 <= ray[Sensors.RayCastSensor.ANGLE] <= 30:
                                 front_sensors.append(ray)
                     
-                        if any(ray[0] == 1 for ray in front_sensors):
+                        if any(ray[Sensors.RayCastSensor.HIT] == 1 for ray in front_sensors):
                             break
                         else:
                             await asyncio.sleep(0)
@@ -442,7 +450,7 @@ class Avoid:
                             if -30 <= ray[Sensors.RayCastSensor.ANGLE] <= 30:
                                 front_sensors.append(ray)
                         
-                        if any(ray[0] == 1 for ray in front_sensors):
+                        if any(ray[Sensors.RayCastSensor.HIT] == 1 for ray in front_sensors):
                             await self.turn_until_clear()
                         else:
                             break
