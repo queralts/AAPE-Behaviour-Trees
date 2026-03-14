@@ -7,6 +7,7 @@ import json
 import Sensors
 import Goals_BT_Basic
 import BTRoam
+import BTCritter
 
 import tkinter as tk
 from threading import Thread
@@ -164,7 +165,8 @@ class AAgent:
 
         # Reference to the possible behaviour trees the agent can execute
         self.bts = {
-            "BTRoam": BTRoam.BTRoam(self)
+            "BTRoam": BTRoam.BTRoam(self),
+            "BTCritter": BTCritter.BTCritter(self)
         }
 
         # Active goal

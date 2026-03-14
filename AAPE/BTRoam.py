@@ -4,6 +4,7 @@ import random
 import py_trees as pt
 import Goals_BT_Basic
 import Sensors
+from py_trees.display import render_dot_tree
 
 class BN_DoNothing(pt.behaviour.Behaviour):
     def __init__(self, aagent):
@@ -97,7 +98,7 @@ class BN_DetectObstacle(pt.behaviour.Behaviour):
         pass
 
     def update(self):
-        # # Si ya está girando, no interrumpir
+        # Do not interrupt if it is already turning
         # if self.my_agent.i_state.isRotatingRight or self.my_agent.i_state.isRotatingLeft:
         #     return pt.common.Status.RUNNING  # deja que el Turn actual termine
 
@@ -217,6 +218,26 @@ class BN_ReturnToBase(pt.behaviour.Behaviour):
     def terminate(self, new_status: pt.common.Status):
         self.my_goal.cancel()
 
+class BN_DetectFrozen(pt.behaviour.Behaviour):
+    def __init__(self, aagent):
+        self.my_goal = None
+        # print("Initializing BN_DetectInventoryFull")
+        super(BN_DetectFrozen, self).__init__("BN_DetectFrozen")
+        self.my_agent = aagent
+        self.i_state = aagent.i_state
+
+    def initialise(self):
+        pass
+
+    def update(self):
+        if self.i_state.isFrozen:
+            return pt.common.Status.SUCCESS
+        return pt.common.Status.FAILURE
+    
+    def terminate(self, new_status: pt.common.Status):
+        pass
+
+
 class BTRoam:
     def __init__(self, aagent):
         # py_trees.logging.level = py_trees.logging.Level.DEBUG
@@ -238,19 +259,19 @@ class BTRoam:
         detection = pt.composites.Sequence(name="DetectFlower", memory=True)
         detection.add_children([BN_DetectFlower(aagent), BN_GoToFlower(aagent)])
 
-        # Si hay obstáculo → girar 
+        # If there is an obstacle: Turn 
         obstacle = pt.composites.Sequence("Obstacle", memory=False)
         obstacle.add_children([BN_DetectObstacle(aagent), BN_Turn(aagent)])
 
-        # Si no hay obstáculo → avanzar
+        # If there is not an obstacle: Move Forward
         roaming = pt.composites.Selector("Roaming", memory=False)
         roaming.add_children([obstacle, BN_ForwardRandom(aagent)])
 
-        # Inventario lleno → volver a base
+        # Inventory Full: Go back to base
         full = pt.composites.Sequence("Full", memory=True)
         full.add_children([BN_CheckInventoryFull(aagent), BN_ReturnToBase(aagent)])
 
-        # Si no está lleno → detectar flor o deambular
+        # Inventory not full: Detect Flower or Roam
         not_full = pt.composites.Selector("NotFull", memory=False)
         not_full.add_children([detection, roaming])
 
@@ -258,6 +279,8 @@ class BTRoam:
         self.root.add_children([full, not_full])
 
         self.behaviour_tree = pt.trees.BehaviourTree(self.root)
+    
+        render_dot_tree(self.root)
 
     def stop_behaviour_tree(self):
         print("Stopping the BehaviorTree")

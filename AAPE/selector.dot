@@ -1,0 +1,31 @@
+digraph pastafarianism {
+ordering=out;
+graph [fontname="times-roman"];
+node [fontname="times-roman"];
+edge [fontname="times-roman"];
+Selector [label=Selector, shape=octagon, style=filled, fillcolor=cyan, fontsize=9, fontcolor=black];
+Full [label="Ⓜ Full", shape=box, style=filled, fillcolor=orange, fontsize=9, fontcolor=black];
+Selector -> Full;
+BN_CheckInventoryFull [label="BN_CheckInventoryFull", shape=ellipse, style=filled, fillcolor=gray, fontsize=9, fontcolor=black];
+Full -> BN_CheckInventoryFull;
+BN_ReturnToBase [label="BN_ReturnToBase", shape=ellipse, style=filled, fillcolor=gray, fontsize=9, fontcolor=black];
+Full -> BN_ReturnToBase;
+NotFull [label=NotFull, shape=octagon, style=filled, fillcolor=cyan, fontsize=9, fontcolor=black];
+Selector -> NotFull;
+DetectFlower [label="Ⓜ DetectFlower", shape=box, style=filled, fillcolor=orange, fontsize=9, fontcolor=black];
+NotFull -> DetectFlower;
+BN_DetectFlower [label="BN_DetectFlower", shape=ellipse, style=filled, fillcolor=gray, fontsize=9, fontcolor=black];
+DetectFlower -> BN_DetectFlower;
+BN_GoToFlower [label="BN_GoToFlower", shape=ellipse, style=filled, fillcolor=gray, fontsize=9, fontcolor=black];
+DetectFlower -> BN_GoToFlower;
+Roaming [label=Roaming, shape=octagon, style=filled, fillcolor=cyan, fontsize=9, fontcolor=black];
+NotFull -> Roaming;
+Obstacle [label=Obstacle, shape=box, style=filled, fillcolor=orange, fontsize=9, fontcolor=black];
+Roaming -> Obstacle;
+BN_DetectObstacle [label="BN_DetectObstacle", shape=ellipse, style=filled, fillcolor=gray, fontsize=9, fontcolor=black];
+Obstacle -> BN_DetectObstacle;
+BN_Turn [label="BN_Turn", shape=ellipse, style=filled, fillcolor=gray, fontsize=9, fontcolor=black];
+Obstacle -> BN_Turn;
+BN_ForwardRandom [label="BN_ForwardRandom", shape=ellipse, style=filled, fillcolor=gray, fontsize=9, fontcolor=black];
+Roaming -> BN_ForwardRandom;
+}

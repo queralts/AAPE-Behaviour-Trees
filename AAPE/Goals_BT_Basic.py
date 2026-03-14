@@ -315,6 +315,12 @@ class ReturnToBase:
             print("RETURNING TO BASE BY WALKING")
             await self.a_agent.send_message("action", "walk_to,BaseAlpha")
 
+            # Wait for the navmesh to actually start the route
+            for _ in range(10):
+                if self.i_state.onRoute:
+                    break
+                await asyncio.sleep(0.2)
+
             timeout = 15.0
             elapsed = 0.0
             step = 0.2 
@@ -331,6 +337,7 @@ class ReturnToBase:
                 await asyncio.sleep(step)
                 elapsed += step
 
+            # 15s passed and agent is still returning to base: teleport directly
             if self.i_state.currentNamedLoc != "BaseAlpha" and self.i_state.onRoute:
                 print("Teleporting to base")
                 await self.a_agent.send_message("action", "teleport_to,BaseAlpha")
@@ -342,3 +349,108 @@ class ReturnToBase:
             return True
         except asyncio.CancelledError:
             return False
+        
+class Avoid:
+
+    STOPPED = 0
+    MOVING = 1
+    AVOIDING = 2
+
+    def __init__(self, a_agent):
+        self.a_agent = a_agent
+        self.rc_sensor = a_agent.rc_sensor
+
+    def choose_turn_direction(self):
+        left_hits = 0
+        right_hits = 0
+
+        for index, ray in enumerate(zip(*self.rc_sensor.sensor_rays)):
+            if ray[Sensors.RayCastSensor.HIT] == 1:
+                if ray[Sensors.RayCastSensor.ANGLE] < 0:
+                    left_hits += 1
+                elif ray[Sensors.RayCastSensor.ANGLE] > 0:
+                    right_hits += 1
+        
+        if left_hits > right_hits:
+            return "right"
+        else:
+            return "left"
+    
+    async def turn_until_clear(self):
+        turn_direction = self.choose_turn_direction()
+        if turn_direction == "left":
+            await self.a_agent.send_message("action", "tl")
+        else:
+            await self.a_agent.send_message("action", "tr")
+
+        while True:
+            front_sensors = []
+            for index, ray in enumerate(zip(*self.rc_sensor.sensor_rays)):
+                if -30 <= ray[Sensors.RayCastSensor.ANGLE] <= 30:
+                    front_sensors.append(ray)
+
+            if any(ray[0] == 1 for ray in front_sensors):
+                await asyncio.sleep(0)
+            else:
+                break
+        
+        await self.a_agent.send_message("action", "stop")
+
+    async def run(self):
+        self.state = self.STOPPED
+        try:
+            while True:
+                if self.state == self.STOPPED:
+                    # Ensure there are no obstacles in moving direction
+                    while True:
+                        front_sensors = []
+                        for index, ray in enumerate(zip(*self.rc_sensor.sensor_rays)):
+                            if -30 <= ray[Sensors.RayCastSensor.ANGLE] <= 30:
+                                front_sensors.append(ray)
+                        
+                        if any(ray[0] == 1 for ray in front_sensors):
+                            await self.turn_until_clear()
+                        else:
+                            break
+                    
+                    # Start moving forward
+                    await self.a_agent.send_message("action", "mf")
+                    print("Starting movement...")
+
+                    self.state = self.MOVING
+
+                elif self.state == self.MOVING:
+                    while True:
+                        front_sensors = []
+                        for index, ray in enumerate(zip(*self.rc_sensor.sensor_rays)):
+                            if -30 <= ray[Sensors.RayCastSensor.ANGLE] <= 30:
+                                front_sensors.append(ray)
+                    
+                        if any(ray[0] == 1 for ray in front_sensors):
+                            break
+                        else:
+                            await asyncio.sleep(0)
+                    
+                    await self.a_agent.send_message("action", "stop")
+                    self.state = self.AVOIDING
+                
+                elif self.state == self.AVOIDING:
+                    
+                    while True:
+                        front_sensors = []
+                        for index, ray in enumerate(zip(*self.rc_sensor.sensor_rays)):
+                            if -30 <= ray[Sensors.RayCastSensor.ANGLE] <= 30:
+                                front_sensors.append(ray)
+                        
+                        if any(ray[0] == 1 for ray in front_sensors):
+                            await self.turn_until_clear()
+                        else:
+                            break
+
+                    await self.a_agent.send_message("action", "mf")
+                    self.state = self.MOVING                        
+        
+        except asyncio.CancelledError:
+            print("***** TASK Avoid CANCELLED")
+            await self.a_agent.send_message("action", "stop")
+            self.state = self.STOPPED
