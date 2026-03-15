@@ -256,6 +256,9 @@ class BTRoam:
 
         # VERSION 3 (with DetectFlower)
 
+        frozen = pt.composites.Sequence(name='DetectFrozen', memory=True)
+        frozen.add_children([BN_DetectFrozen(aagent), BN_DoNothing(aagent)])
+
         detection = pt.composites.Sequence(name="DetectFlower", memory=True)
         detection.add_children([BN_DetectFlower(aagent), BN_GoToFlower(aagent)])
 
@@ -275,12 +278,15 @@ class BTRoam:
         not_full = pt.composites.Selector("NotFull", memory=False)
         not_full.add_children([detection, roaming])
 
-        self.root = pt.composites.Selector(name="Selector", memory=True)
-        self.root.add_children([full, not_full])
+        notFrozen = pt.composites.Selector(name="Selector", memory=True)
+        notFrozen.add_children([full, not_full])
+
+        self.root = pt.composites.Selector(name="BTRoam", memory=True)
+        self.root.add_children([frozen, notFrozen])
 
         self.behaviour_tree = pt.trees.BehaviourTree(self.root)
     
-        render_dot_tree(self.root)
+        # render_dot_tree(self.root)
 
     def stop_behaviour_tree(self):
         print("Stopping the BehaviorTree")

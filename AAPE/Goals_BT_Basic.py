@@ -205,11 +205,12 @@ class GoToFlower:
         self.a_agent = a_agent
         self.rc_sensor = a_agent.rc_sensor
         self.i_state = a_agent.i_state
-        self.threshold = 1.5
+        self.threshold = 0.7
         self.sensor_obj_info = self.a_agent.rc_sensor.sensor_rays[Sensors.RayCastSensor.OBJECT_INFO]
         self.state = self.DETECTING
         self.detecting_attempts = 0     
-        self.max_detecting_attempts = 10  
+        self.max_detecting_attempts = 10
+        self.current_turn = None  
 
     async def run(self):
         try:
@@ -257,9 +258,13 @@ class GoToFlower:
                                 await self.a_agent.send_message("action", "mf")
                                 self.state = self.MOVING
                             elif angle > 0:
-                                await self.a_agent.send_message("action", "tr")
+                                if self.current_turn != "tr":
+                                    await self.a_agent.send_message("action", "tr")
+                                    self.current_turn = "tr"
                             else:
-                                await self.a_agent.send_message("action", "tl")
+                                if self.current_turn != "tl":
+                                    await self.a_agent.send_message("action", "tl")
+                                    self.current_turn = "tl"
 
                             break
 
@@ -462,3 +467,95 @@ class Avoid:
             print("***** TASK Avoid CANCELLED")
             await self.a_agent.send_message("action", "stop")
             self.state = self.STOPPED
+
+
+class ChaseAstronaut:
+
+    FOLLOWING = 0
+    MOVE_AWAY = 1
+
+    def __init__(self, a_agent):
+        self.a_agent = a_agent
+        self.rc_sensor = a_agent.rc_sensor
+        self.threshold = 0.5
+        self.current_turn = None
+
+    async def run(self):
+        self.state = self.FOLLOWING
+
+        try:
+            await self.a_agent.send_message("action", "mf")
+
+            while True:
+
+                if self.state == self.FOLLOWING:
+
+                    found = False
+                    sensor_obj_info = self.rc_sensor.sensor_rays[Sensors.RayCastSensor.OBJECT_INFO]
+
+                    for index, value in enumerate(sensor_obj_info):
+
+                        if value and value["tag"] == "Astronaut":
+
+                            found = True
+                            angle = self.rc_sensor.sensor_rays[Sensors.RayCastSensor.ANGLE][index]
+                            distance = self.rc_sensor.sensor_rays[Sensors.RayCastSensor.DISTANCE][index]
+
+                            if distance < self.threshold:
+                                await self.a_agent.send_message("action", "ntm")
+                                self.state = self.MOVE_AWAY
+                                break
+
+                            
+                            if angle > 10:
+                                if self.current_turn != "tr":
+                                    await self.a_agent.send_message("action", "tr")
+                                    self.current_turn = "tr"
+
+                            elif angle < -10:
+                                if self.current_turn != "tl":
+                                    await self.a_agent.send_message("action", "tl")
+                                    self.current_turn = "tl"
+
+                            else:
+                                if self.current_turn is not None:
+                                    await self.a_agent.send_message("action", "nt")
+                                    self.current_turn = None
+
+                            break
+
+                    if not found:
+                        await self.a_agent.send_message("action", "ntm")
+                        return False
+
+                    await asyncio.sleep(0.02)
+
+                elif self.state == self.MOVE_AWAY:
+
+                    await self.a_agent.send_message("action", "ntm")
+
+                    action = random.choice(["tl", "tr"])
+                    await self.a_agent.send_message("action", action)
+
+                    await asyncio.sleep(random.uniform(0.4, 1.0))
+
+                    await self.a_agent.send_message("action", "nt")
+                    await self.a_agent.send_message("action", "mf")
+
+                    await asyncio.sleep(2.0)
+
+                    await self.a_agent.send_message("action", "ntm")
+
+                    return True
+
+        except asyncio.CancelledError:
+            await self.a_agent.send_message("action", "ntm")
+
+
+
+
+                    
+
+
+
+
