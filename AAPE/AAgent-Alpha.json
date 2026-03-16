@@ -11,7 +11,7 @@
     "spawn_area": "",
     "spawn_point": "SpawnAlpha",
     "debug_mode": true,
-    "manual_control": true,
+    "manual_control": false,
     "initial_task": "bt:BTRoam",
     "ray_perception_sensor_param": [2,45,0,5]
   },

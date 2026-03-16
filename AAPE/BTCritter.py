@@ -27,8 +27,8 @@ class BN_Avoid(pt.behaviour.Behaviour):
         if self.goal and not self.goal.done():
             self.goal.cancel()
 
+
 class BN_DetectAstronaut(pt.behaviour.Behaviour):
-    
     def __init__(self, aagent):
         self.my_goal = None
         # print("Initializing BN_DetectAstronaut")
@@ -43,11 +43,11 @@ class BN_DetectAstronaut(pt.behaviour.Behaviour):
         for index, value in enumerate(sensor_obj_info):
             if value:  # there is a hit with an object
                 if value["tag"] == "Astronaut":  # If it is an astronaut
-                    print("Astronaut detected!")
-                    print("BN_DetectAstronaut completed with SUCCESS")
+                    # print("Astronaut detected!")
+                    #print("BN_DetectAstronaut completed with SUCCESS")
                     return pt.common.Status.SUCCESS
-        print("No Astronaut...")
-        print("BN_DetectAstronaut completed with FAILURE")
+        # print("No Astronaut...")
+        # print("BN_DetectAstronaut completed with FAILURE")
         return pt.common.Status.FAILURE
 
     def terminate(self, new_status: pt.common.Status):

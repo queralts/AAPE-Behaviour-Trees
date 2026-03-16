@@ -237,6 +237,41 @@ class BN_DetectFrozen(pt.behaviour.Behaviour):
     def terminate(self, new_status: pt.common.Status):
         pass
 
+class BN_DetectCritter(pt.behaviour.Behaviour):
+    def __init__(self, aagent):
+        super().__init__("BN_DetectCritter")
+        self.my_agent = aagent
+
+    def initialise(self): pass
+
+    def update(self):
+        sensor_obj_info = self.my_agent.rc_sensor.sensor_rays[Sensors.RayCastSensor.OBJECT_INFO]
+        for value in sensor_obj_info:
+            if value and value["tag"] == "CritterMantaRay":
+                print(f"-------Objeto detectado: {value}")
+                return pt.common.Status.SUCCESS
+        return pt.common.Status.FAILURE
+
+    def terminate(self, new_status): pass
+
+
+class BN_FleeFromCritter(pt.behaviour.Behaviour):
+    def __init__(self, aagent):
+        super().__init__("BN_FleeFromCritter")
+        self.my_agent = aagent
+        self.my_goal = None
+
+    def initialise(self):
+        self.my_goal = asyncio.create_task(Goals_BT_Basic.FleeFromCritter(self.my_agent).run())
+
+    def update(self):
+        if not self.my_goal.done():
+            return pt.common.Status.RUNNING
+        else:
+            return pt.common.Status.SUCCESS if self.my_goal.result() else pt.common.Status.FAILURE
+
+    def terminate(self, new_status):
+        self.my_goal.cancel()
 
 class BTRoam:
     def __init__(self, aagent):
@@ -263,11 +298,11 @@ class BTRoam:
         detection.add_children([BN_DetectFlower(aagent), BN_GoToFlower(aagent)])
 
         # If there is an obstacle: Turn 
-        obstacle = pt.composites.Sequence("Obstacle", memory=False)
+        obstacle = pt.composites.Sequence("Obstacle", memory=True)
         obstacle.add_children([BN_DetectObstacle(aagent), BN_Turn(aagent)])
 
         # If there is not an obstacle: Move Forward
-        roaming = pt.composites.Selector("Roaming", memory=False)
+        roaming = pt.composites.Selector("Roaming", memory=True)
         roaming.add_children([obstacle, BN_ForwardRandom(aagent)])
 
         # Inventory Full: Go back to base
@@ -278,11 +313,14 @@ class BTRoam:
         not_full = pt.composites.Selector("NotFull", memory=False)
         not_full.add_children([detection, roaming])
 
-        notFrozen = pt.composites.Selector(name="Selector", memory=True)
+        notFrozen = pt.composites.Selector(name="Selector", memory=False)
         notFrozen.add_children([full, not_full])
 
-        self.root = pt.composites.Selector(name="BTRoam", memory=True)
-        self.root.add_children([frozen, notFrozen])
+        flee = pt.composites.Sequence("Flee", memory=True)
+        flee.add_children([BN_DetectCritter(aagent), BN_FleeFromCritter(aagent)])
+
+        self.root = pt.composites.Selector(name="BTRoam", memory=False)
+        self.root.add_children([frozen, flee, notFrozen])
 
         self.behaviour_tree = pt.trees.BehaviourTree(self.root)
     

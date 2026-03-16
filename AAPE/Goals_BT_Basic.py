@@ -4,6 +4,9 @@ import asyncio
 import Sensors
 from collections import Counter
 
+## camina como si le estan empujando
+## critters deberian girar y forward a la vez, no turn y luego forward
+
 def calculate_distance(point_a, point_b):
     distance = math.sqrt((point_b['x'] - point_a['x']) ** 2 +
                          (point_b['y'] - point_a['y']) ** 2 +
@@ -237,7 +240,7 @@ class GoToFlower:
                     if not flower_found:
                         return False
                     
-                    await asyncio.sleep(0)
+                    await asyncio.sleep(0.1)
 
                 elif self.state==self.TURNING:
                     print("TURNING TOWARDS FLOWER")
@@ -276,6 +279,7 @@ class GoToFlower:
 
                 elif self.state == self.MOVING:
                     print("MOVING TOWARDS FLOWER")
+                    await asyncio.sleep(0.2)
 
 
                     flower_found = False
@@ -307,8 +311,6 @@ class GoToFlower:
 
         except asyncio.CancelledError:
             print("***** TASK GoToFlower CANCELLED")
-            await self.a_agent.send_message("action", "nt")
-            await self.a_agent.send_message("action", "stop")
 
 class ReturnToBase:
     def __init__(self, a_agent):
@@ -317,27 +319,25 @@ class ReturnToBase:
 
     async def run(self):
         try:
-            await self.a_agent.send_message("action", "ntm")
+            await self.a_agent.send_message("action", "stop")
             print("RETURNING TO BASE BY WALKING")
             await self.a_agent.send_message("action", "walk_to,BaseAlpha")
 
             # Wait for the navmesh to actually start the route
-            for _ in range(10):
-                if self.i_state.onRoute:
-                    break
+            # for _ in range(10):
+            #     if self.i_state.onRoute:
+            #         break
+            #     await asyncio.sleep(0.2)
+            while self.i_state.onRoute:
                 await asyncio.sleep(0.2)
 
-            timeout = 15.0
+            timeout = 20.0
             elapsed = 0.0
-            step = 0.2 
+            step = 0.2
 
             while elapsed < timeout:
                 # reached destination
-                if self.i_state.currentNamedLoc == "BaseAlpha":
-                    break
-
-                # navmesh route finished
-                if self.i_state.targetNamedLoc == "BaseAlpha" and not self.i_state.onRoute:
+                if not self.i_state.onRoute:
                     break
 
                 await asyncio.sleep(step)
@@ -353,11 +353,57 @@ class ReturnToBase:
             await self.a_agent.send_message("action", "leave,AlienFlower,2")
             await asyncio.sleep(0.5)
             return True
+
         except asyncio.CancelledError:
+            await self.a_agent.send_message("action", "stop")
+            return False
+
+
+class FleeFromCritter:
+    def __init__(self, a_agent):
+        self.a_agent = a_agent
+        self.rc_sensor = a_agent.rc_sensor
+        self.i_state = a_agent.i_state
+
+    async def run(self):
+        try:
+            # Buscar el critter más cercano
+            sensor_obj_info = self.rc_sensor.sensor_rays[Sensors.RayCastSensor.OBJECT_INFO]
+            critter_angle = None
+            critter_dist = float('inf')
+
+            for index, value in enumerate(sensor_obj_info):
+                if value and value["tag"] == "CritterMantaRay":
+                    dist = self.rc_sensor.sensor_rays[Sensors.RayCastSensor.DISTANCE][index]
+                    if dist < critter_dist:
+                        critter_dist = dist
+                        critter_angle = self.rc_sensor.sensor_rays[Sensors.RayCastSensor.ANGLE][index]
+
+            if critter_angle is None:
+                return False
+
+            # Girar en dirección opuesta al critter
+            if critter_angle >= 0:  # critter a la derecha o al frente → girar izquierda
+                await self.a_agent.send_message("action", "tl")
+            else:  # critter a la izquierda → girar derecha
+                await self.a_agent.send_message("action", "tr")
+
+            await asyncio.sleep(1.0)
+            await self.a_agent.send_message("action", "stop")
+
+            # Avanzar alejándose
+            await self.a_agent.send_message("action", "mf")
+            await asyncio.sleep(2.0)
+            await self.a_agent.send_message("action", "ntm")
+
+            return True
+
+        except asyncio.CancelledError:
+            await self.a_agent.send_message("action", "stop")
             return False
         
-class Avoid:
 
+class Avoid:
     STOPPED = 0
     MOVING = 1
     AVOIDING = 2
@@ -470,7 +516,6 @@ class Avoid:
 
 
 class ChaseAstronaut:
-
     FOLLOWING = 0
     MOVE_AWAY = 1
 
@@ -532,24 +577,35 @@ class ChaseAstronaut:
 
                 elif self.state == self.MOVE_AWAY:
 
-                    await self.a_agent.send_message("action", "ntm")
+                    await self.a_agent.send_message("action", "stop")
 
+                    # Girar en dirección opuesta al astronauta
                     action = random.choice(["tl", "tr"])
                     await self.a_agent.send_message("action", action)
-
                     await asyncio.sleep(random.uniform(0.4, 1.0))
-
                     await self.a_agent.send_message("action", "nt")
+                    
+                    # Avanzar hasta estar suficientemente lejos
                     await self.a_agent.send_message("action", "mf")
+                    min_distance = 3.0  # distancia mínima para alejarse
+                    start_pos = dict(self.a_agent.i_state.position)
+                    
+                    while True:
+                        current_dist = calculate_distance(start_pos, self.a_agent.i_state.position)
+                        if current_dist >= min_distance:
+                            break
+                        # Si hay obstáculo delante, para y termina igualmente
+                        hits = self.rc_sensor.sensor_rays[Sensors.RayCastSensor.HIT]
+                        if any(hits[i] for i in range(len(hits))):
+                            break
 
-                    await asyncio.sleep(2.0)
-
+                        await asyncio.sleep(0.2)
+                    
                     await self.a_agent.send_message("action", "ntm")
-
                     return True
 
         except asyncio.CancelledError:
-            await self.a_agent.send_message("action", "ntm")
+            await self.a_agent.send_message("action", "stop")
 
 
 
