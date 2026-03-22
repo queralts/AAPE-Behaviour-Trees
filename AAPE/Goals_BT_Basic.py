@@ -109,9 +109,9 @@ class ForwardDist:
                     current_dist = calculate_distance(self.starting_pos, self.i_state.position)
                     print(f"Current distance: {current_dist}")
                     if current_dist >= self.target_dist:  # Check if we already have covered the required distance
-                        # await self.a_agent.send_message("action", "stop")
-                        # self.state = self.STOPPED
-                        # return True
+                        await self.a_agent.send_message("action", "stop")
+                        self.state = self.STOPPED
+
                         self.starting_pos = dict(self.i_state.position)
                         if self.original_dist < 0:
                             self.target_dist = random.randint(self.d_min, self.d_max)
@@ -182,6 +182,9 @@ class Turn:
             else:
                 action = "tl"
 
+            await self.a_agent.send_message("action", "stop")
+            await asyncio.sleep(0.05)
+
             # Girar con timeout máximo
             await self.a_agent.send_message("action", action)
             max_time = 2.0
@@ -192,11 +195,11 @@ class Turn:
                 if max_consecutive_hits() < 2:
                     break
 
-            await self.a_agent.send_message("action", "nt")
+            await self.a_agent.send_message("action", "stop")
             return True
 
         except asyncio.CancelledError:
-            await self.a_agent.send_message("action", "nt")
+            await self.a_agent.send_message("action", "stop")
             return False
 
 class GoToFlower:
