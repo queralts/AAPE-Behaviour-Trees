@@ -322,56 +322,48 @@ class BTRoam:
         # self.behaviour_tree = pt.trees.BehaviourTree(self.root)
 
         # VERSION 2 (Alone with avoid)
-        detection = pt.composites.Sequence(name="DetectFlower", memory=True)
-        detection.add_children([BN_DetectFlower(aagent), BN_GoToFlower(aagent)])
-
-        full = pt.composites.Sequence("Full", memory=True)
-        full.add_children([BN_CheckInventoryFull(aagent), BN_ReturnToBase(aagent)])
-
-        not_full = pt.composites.Selector("NotFull", memory=False)
-        not_full.add_children([detection, BN_AvoidObstacle(aagent)])
-
-        self.root = pt.composites.Selector(name="BTRoam", memory=False)
-        self.root.add_children([full, not_full])
-
-        self.behaviour_tree = pt.trees.BehaviourTree(self.root)
-        
-
-        # VERSION 3 (Collect and run)
-        # frozen = pt.composites.Sequence(name='DetectFrozen', memory=True)
-        # frozen.add_children([BN_DetectFrozen(aagent), BN_DoNothing(aagent)])
-
         # detection = pt.composites.Sequence(name="DetectFlower", memory=True)
         # detection.add_children([BN_DetectFlower(aagent), BN_GoToFlower(aagent)])
 
-        # # If there is an obstacle: Turn 
-        # obstacle = pt.composites.Sequence("Obstacle", memory=True)
-        # obstacle.add_children([BN_DetectObstacle(aagent), BN_Turn(aagent)])
-
-        # # If there is not an obstacle: Move Forward
-        # roaming = pt.composites.Selector("Roaming", memory=True)
-        # roaming.add_children([obstacle, BN_ForwardRandom(aagent)])
-
-        # # Inventory Full: Go back to base
         # full = pt.composites.Sequence("Full", memory=True)
         # full.add_children([BN_CheckInventoryFull(aagent), BN_ReturnToBase(aagent)])
 
-        # # Inventory not full: Detect Flower or Roam
         # not_full = pt.composites.Selector("NotFull", memory=False)
-        # not_full.add_children([detection, roaming])
-
-        # notFrozen = pt.composites.Selector(name="Selector", memory=False)
-        # notFrozen.add_children([full, not_full])
-
-        # flee = pt.composites.Sequence("Flee", memory=True)
-        # flee.add_children([BN_DetectCritter(aagent), BN_FleeFromCritter(aagent)])
+        # not_full.add_children([detection, BN_AvoidObstacle(aagent)])
 
         # self.root = pt.composites.Selector(name="BTRoam", memory=False)
-        # self.root.add_children([frozen, flee, notFrozen])
+        # self.root.add_children([full, not_full])
 
         # self.behaviour_tree = pt.trees.BehaviourTree(self.root)
+        
+
+        # VERSION 3 (Collect and run)
+        frozen = pt.composites.Sequence(name='DetectFrozen', memory=True)
+        frozen.add_children([BN_DetectFrozen(aagent), BN_DoNothing(aagent)])
+
+        detection = pt.composites.Sequence(name="DetectFlower", memory=True)
+        detection.add_children([BN_DetectFlower(aagent), BN_GoToFlower(aagent)])
+
+        # Inventory Full: Go back to base
+        full = pt.composites.Sequence("Full", memory=True)
+        full.add_children([BN_CheckInventoryFull(aagent), BN_ReturnToBase(aagent)])
+
+        # Inventory not full: Detect Flower or Roam
+        not_full = pt.composites.Selector("NotFull", memory=False)
+        not_full.add_children([detection, BN_AvoidObstacle(aagent)])
+
+        notFrozen = pt.composites.Selector(name="Selector", memory=False)
+        notFrozen.add_children([full, not_full])
+
+        flee = pt.composites.Sequence("Flee", memory=True)
+        flee.add_children([BN_DetectCritter(aagent), BN_FleeFromCritter(aagent)])
+
+        self.root = pt.composites.Selector(name="BTRoam", memory=False)
+        self.root.add_children([frozen, flee, notFrozen])
+
+        self.behaviour_tree = pt.trees.BehaviourTree(self.root)
     
-        # render_dot_tree(self.root)
+        render_dot_tree(self.root)
 
     def stop_behaviour_tree(self):
         print("Stopping the BehaviorTree")
