@@ -4,9 +4,6 @@ import asyncio
 import Sensors
 from collections import Counter
 
-## camina como si le estan empujando
-## critters deberian girar y forward a la vez, no turn y luego forward
-
 def calculate_distance(point_a, point_b):
     distance = math.sqrt((point_b['x'] - point_a['x']) ** 2 +
                          (point_b['y'] - point_a['y']) ** 2 +
@@ -123,7 +120,7 @@ class ForwardDist:
                         print("NOT MOVING")
                         await self.a_agent.send_message("action", "stop")
                         self.state = self.STOPPED
-                        return False
+                        return True ## changed this to true because if we are not moving, we consider that we have reached the target distance (even if it is not the case) to avoid getting stuck indefinitely
                     previous_dist = current_dist
                 else:
                     print("Unknown state: " + str(self.state))
@@ -331,7 +328,9 @@ class ReturnToBase:
             #     if self.i_state.onRoute:
             #         break
             #     await asyncio.sleep(0.2)
-            while self.i_state.onRoute:
+            for _ in range(20):
+                if self.i_state.onRoute:
+                    break
                 await asyncio.sleep(0.2)
 
             timeout = 20.0
@@ -445,7 +444,7 @@ class Avoid:
                     front_sensors.append(ray)
 
             if any(ray[Sensors.RayCastSensor.HIT] == 1 for ray in front_sensors):
-                await asyncio.sleep(0)
+                await asyncio.sleep(0.1)
             else:
                 break
         
@@ -459,11 +458,11 @@ class Avoid:
                     # Ensure there are no obstacles in moving direction
                     while True:
                         front_sensors = []
-                        for index, ray in enumerate(zip(*self.rc_sensor.sensor_rays)):
+                        for _, ray in enumerate(zip(*self.rc_sensor.sensor_rays)):
                             if -30 <= ray[Sensors.RayCastSensor.ANGLE] <= 30:
                                 front_sensors.append(ray)
                         
-                        if any(ray[Sensors.RayCastSensor.HIT] == 1 for ray in front_sensors):
+                        if sum(ray[Sensors.RayCastSensor.HIT] == 1 for ray in front_sensors) >= 2:
                             await self.turn_until_clear()
                         else:
                             break
@@ -484,14 +483,14 @@ class Avoid:
 
                     while True:
                         front_sensors = []
-                        for index, ray in enumerate(zip(*self.rc_sensor.sensor_rays)):
+                        for _, ray in enumerate(zip(*self.rc_sensor.sensor_rays)):
                             if -30 <= ray[Sensors.RayCastSensor.ANGLE] <= 30:
                                 front_sensors.append(ray)
                     
-                        if any(ray[Sensors.RayCastSensor.HIT] == 1 for ray in front_sensors):
+                        if sum(ray[Sensors.RayCastSensor.HIT] == 1 for ray in front_sensors) >= 2:
                             break
                         else:
-                            await asyncio.sleep(0)
+                            await asyncio.sleep(0.1)
                     
                     await self.a_agent.send_message("action", "stop")
                     self.state = self.AVOIDING
@@ -500,11 +499,11 @@ class Avoid:
                     
                     while True:
                         front_sensors = []
-                        for index, ray in enumerate(zip(*self.rc_sensor.sensor_rays)):
+                        for _, ray in enumerate(zip(*self.rc_sensor.sensor_rays)):
                             if -30 <= ray[Sensors.RayCastSensor.ANGLE] <= 30:
                                 front_sensors.append(ray)
                         
-                        if any(ray[Sensors.RayCastSensor.HIT] == 1 for ray in front_sensors):
+                        if sum(ray[Sensors.RayCastSensor.HIT] == 1 for ray in front_sensors) >= 2:
                             await self.turn_until_clear()
                         else:
                             break
@@ -517,6 +516,77 @@ class Avoid:
             await self.a_agent.send_message("action", "stop")
             self.state = self.STOPPED
 
+class AvoidObstacle:
+    """Like Avoid, but ignores AlienFlower hits (treats them as free space)."""
+    STOPPED = 0
+    MOVING = 1
+    AVOIDING = 2
+
+    def __init__(self, a_agent):
+        self.a_agent = a_agent
+        self.rc_sensor = a_agent.rc_sensor
+
+    def _real_hits_in_front(self):
+        hits = 0
+        for _, ray in enumerate(zip(*self.rc_sensor.sensor_rays)):
+            if -30 <= ray[Sensors.RayCastSensor.ANGLE] <= 30:
+                is_flower = (ray[Sensors.RayCastSensor.OBJECT_INFO] and
+                             ray[Sensors.RayCastSensor.OBJECT_INFO].get("tag") == "AlienFlower")
+                if ray[Sensors.RayCastSensor.HIT] == 1 and not is_flower:
+                    hits += 1
+        return hits
+
+    def _choose_turn_direction(self):
+        left_hits, right_hits = 0, 0
+        for _, ray in enumerate(zip(*self.rc_sensor.sensor_rays)):
+            obj = ray[Sensors.RayCastSensor.OBJECT_INFO]
+            is_flower = obj and obj.get("tag") == "AlienFlower"
+            if ray[Sensors.RayCastSensor.HIT] == 1 and not is_flower:
+                if ray[Sensors.RayCastSensor.ANGLE] < 0:
+                    left_hits += 1
+                else:
+                    right_hits += 1
+        return "right" if left_hits > right_hits else "left"
+
+    async def _turn_until_clear(self):
+        direction = self._choose_turn_direction()
+        action = "tl" if direction == "left" else "tr"
+        await self.a_agent.send_message("action", action)
+        while self._real_hits_in_front() >= 2:
+            await asyncio.sleep(0.1)
+        await self.a_agent.send_message("action", "stop")
+
+    async def run(self):
+        self.state = self.STOPPED
+        try:
+            while True:
+                if self.state == self.STOPPED:
+                    while self._real_hits_in_front() >= 2:
+                        await self._turn_until_clear()
+                    await self.a_agent.send_message("action", "mf")
+                    self.state = self.MOVING
+
+                elif self.state == self.MOVING:
+                    if random.random() < 0.01:
+                        await self.a_agent.send_message("action", random.choice(["tl", "tr"]))
+                        await asyncio.sleep(0.5)
+                        await self.a_agent.send_message("action", "nt")
+                    while True:
+                        if self._real_hits_in_front() >= 2:
+                            break
+                        await asyncio.sleep(0.1)
+                    await self.a_agent.send_message("action", "stop")
+                    self.state = self.AVOIDING
+
+                elif self.state == self.AVOIDING:
+                    while self._real_hits_in_front() >= 2:
+                        await self._turn_until_clear()
+                    await self.a_agent.send_message("action", "mf")
+                    self.state = self.MOVING
+
+        except asyncio.CancelledError:
+            await self.a_agent.send_message("action", "stop")
+            self.state = self.STOPPED
 
 class ChaseAstronaut:
     FOLLOWING = 0
