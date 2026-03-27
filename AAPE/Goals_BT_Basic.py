@@ -625,12 +625,12 @@ class ChaseAstronaut:
                                 break
 
                             
-                            if angle > 10:
+                            if angle > 8:
                                 if self.current_turn != "tr":
                                     await self.a_agent.send_message("action", "tr")
                                     self.current_turn = "tr"
 
-                            elif angle < -10:
+                            elif angle < -8:
                                 if self.current_turn != "tl":
                                     await self.a_agent.send_message("action", "tl")
                                     self.current_turn = "tl"
@@ -639,7 +639,6 @@ class ChaseAstronaut:
                                 if self.current_turn is not None:
                                     await self.a_agent.send_message("action", "nt")
                                     self.current_turn = None
-
                             break
 
                     if not found:
