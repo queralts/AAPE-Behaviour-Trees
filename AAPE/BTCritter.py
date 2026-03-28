@@ -42,7 +42,9 @@ class BN_DetectAstronaut(pt.behaviour.Behaviour):
         sensor_obj_info = self.my_agent.rc_sensor.sensor_rays[Sensors.RayCastSensor.OBJECT_INFO]
         for index, value in enumerate(sensor_obj_info):
             if value:  # there is a hit with an object
-                if value["tag"] == "Astronaut":  # If it is an astronaut
+                if value["tag"] not in ["Location", "Rock", "AlienFlower", "CritterMantaRay", "Wall"]:
+                    print(f"---------------------------------Tag detectado: {value['tag']}")
+                if value["tag"] == "Location":  # If it is an astronaut
                     # print("Astronaut detected!")
                     #print("BN_DetectAstronaut completed with SUCCESS")
                     return pt.common.Status.SUCCESS
