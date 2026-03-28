@@ -333,7 +333,6 @@ class BTRoam:
 
         # self.behaviour_tree = pt.trees.BehaviourTree(self.root)
         
-
         # VERSION 3 (Collect and run)
         frozen = pt.composites.Sequence(name='DetectFrozen', memory=True)
         frozen.add_children([BN_DetectFrozen(aagent), BN_DoNothing(aagent)])
@@ -352,8 +351,6 @@ class BTRoam:
 
         self.behaviour_tree = pt.trees.BehaviourTree(self.root)
     
-        render_dot_tree(self.root)
-
     def stop_behaviour_tree(self):
         print("Stopping the BehaviorTree")
         try:
