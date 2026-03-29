@@ -369,31 +369,38 @@ class FleeFromCritter:
 
     async def run(self):
         try:
-            # Buscar el critter más cercano
-            sensor_obj_info = self.rc_sensor.sensor_rays[Sensors.RayCastSensor.OBJECT_INFO]
+            # Small delay to let previous behavior's cancellation flush
+            await asyncio.sleep(0.05)
+
+            # Search for closest critter (retry a few times if sensors haven't updated)
             critter_angle = None
             critter_dist = float('inf')
 
-            for index, value in enumerate(sensor_obj_info):
-                if value and value["tag"] == "CritterMantaRay":
-                    dist = self.rc_sensor.sensor_rays[Sensors.RayCastSensor.DISTANCE][index]
-                    if dist < critter_dist:
-                        critter_dist = dist
-                        critter_angle = self.rc_sensor.sensor_rays[Sensors.RayCastSensor.ANGLE][index]
+            for _ in range(10):
+                sensor_obj_info = self.rc_sensor.sensor_rays[Sensors.RayCastSensor.OBJECT_INFO]
+                for index, value in enumerate(sensor_obj_info):
+                    if value and value["tag"] == "CritterMantaRay":
+                        dist = self.rc_sensor.sensor_rays[Sensors.RayCastSensor.DISTANCE][index]
+                        if dist < critter_dist:
+                            critter_dist = dist
+                            critter_angle = self.rc_sensor.sensor_rays[Sensors.RayCastSensor.ANGLE][index]
+                if critter_angle is not None:
+                    break
+                await asyncio.sleep(0.02)
 
             if critter_angle is None:
                 return False
 
-            # Girar en dirección opuesta al critter
-            if critter_angle >= 0:  # critter a la derecha o al frente → girar izquierda
+            # Turn in the opposite direction to the Critter
+            if critter_angle >= 0:  # Critter to the right or front: turn left
                 await self.a_agent.send_message("action", "tl")
-            else:  # critter a la izquierda → girar derecha
+            else:  # Critter to the left: turn right
                 await self.a_agent.send_message("action", "tr")
 
             await asyncio.sleep(1.0)
             await self.a_agent.send_message("action", "stop")
 
-            # Avanzar alejándose
+            # Move away
             await self.a_agent.send_message("action", "mf")
             await asyncio.sleep(2.0)
             await self.a_agent.send_message("action", "ntm")
@@ -600,8 +607,12 @@ class ChaseAstronaut:
 
     async def run(self):
         self.state = self.FOLLOWING
+        lost_sight_ticks = 0
+        max_lost_sight_ticks = 15  # keep moving forward briefly after losing sight
 
         try:
+            # Small delay to let Avoid's cancellation "stop" command pass
+            await asyncio.sleep(0.05)
             await self.a_agent.send_message("action", "mf")
 
             while True:
@@ -616,6 +627,7 @@ class ChaseAstronaut:
                         if value and value["tag"] == "Astronaut":
 
                             found = True
+                            lost_sight_ticks = 0
                             angle = self.rc_sensor.sensor_rays[Sensors.RayCastSensor.ANGLE][index]
                             distance = self.rc_sensor.sensor_rays[Sensors.RayCastSensor.DISTANCE][index]
 
@@ -624,7 +636,7 @@ class ChaseAstronaut:
                                 self.state = self.MOVE_AWAY
                                 break
 
-                            
+
                             if angle > 8:
                                 if self.current_turn != "tr":
                                     await self.a_agent.send_message("action", "tr")
@@ -642,8 +654,10 @@ class ChaseAstronaut:
                             break
 
                     if not found:
-                        await self.a_agent.send_message("action", "ntm")
-                        return False
+                        lost_sight_ticks += 1
+                        if lost_sight_ticks >= max_lost_sight_ticks:
+                            await self.a_agent.send_message("action", "ntm")
+                            return False
 
                     await asyncio.sleep(0.02)
 
@@ -651,22 +665,22 @@ class ChaseAstronaut:
 
                     await self.a_agent.send_message("action", "stop")
 
-                    # Girar en dirección opuesta al astronauta
+                    # Turn in the opposite direction to the astronaut
                     action = random.choice(["tl", "tr"])
                     await self.a_agent.send_message("action", action)
                     await asyncio.sleep(random.uniform(0.4, 1.0))
                     await self.a_agent.send_message("action", "nt")
                     
-                    # Avanzar hasta estar suficientemente lejos
+                    # Move until far enough
                     await self.a_agent.send_message("action", "mf")
-                    min_distance = 3.0  # distancia mínima para alejarse
+                    min_distance = 3.0  # minimum distance to move away
                     start_pos = dict(self.a_agent.i_state.position)
                     
                     while True:
                         current_dist = calculate_distance(start_pos, self.a_agent.i_state.position)
                         if current_dist >= min_distance:
                             break
-                        # Si hay obstáculo delante, para y termina igualmente
+                        # If there are obstacles stop and finish
                         hits = self.rc_sensor.sensor_rays[Sensors.RayCastSensor.HIT]
                         if any(hits[i] for i in range(len(hits))):
                             break
