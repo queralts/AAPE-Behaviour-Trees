@@ -333,23 +333,8 @@ class ReturnToBase:
                     break
                 await asyncio.sleep(0.2)
 
-            timeout = 20.0
-            elapsed = 0.0
-            step = 0.2
-
-            while elapsed < timeout:
-                # reached destination
-                if not self.i_state.onRoute:
-                    break
-
-                await asyncio.sleep(step)
-                elapsed += step
-
-            # 15s passed and agent is still returning to base: teleport directly
-            if self.i_state.currentNamedLoc != "BaseAlpha" and self.i_state.onRoute:
-                print("Teleporting to base")
-                await self.a_agent.send_message("action", "teleport_to,BaseAlpha")
-                await asyncio.sleep(1.0)
+            while self.i_state.onRoute:
+                await asyncio.sleep(0.2)
 
             print("UNLOADING FLOWERS")
             await self.a_agent.send_message("action", "leave,AlienFlower,2")
