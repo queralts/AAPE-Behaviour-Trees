@@ -340,7 +340,7 @@ class BTRoam:
         detection = pt.composites.Sequence(name="DetectFlower", memory=True)
         detection.add_children([BN_DetectFlower(aagent), BN_GoToFlower(aagent)])
 
-        full = pt.composites.Sequence("Full", memory=True)
+        full = pt.composites.Sequence("Full", memory=False)
         full.add_children([BN_CheckInventoryFull(aagent), BN_ReturnToBase(aagent)])
 
         flee = pt.composites.Sequence("Flee", memory=True)

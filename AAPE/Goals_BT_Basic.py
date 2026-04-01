@@ -382,12 +382,11 @@ class FleeFromCritter:
             else:  # Critter to the left: turn right
                 await self.a_agent.send_message("action", "tr")
 
-            await asyncio.sleep(1.0)
-            await self.a_agent.send_message("action", "stop")
+            await asyncio.sleep(0.4)
 
             # Move away
             await self.a_agent.send_message("action", "mf")
-            await asyncio.sleep(2.0)
+            await asyncio.sleep(1.0)
             await self.a_agent.send_message("action", "ntm")
 
             return True
