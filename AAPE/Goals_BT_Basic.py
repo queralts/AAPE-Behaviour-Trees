@@ -543,8 +543,20 @@ class AvoidObstacle:
         direction = self._choose_turn_direction()
         action = "tl" if direction == "left" else "tr"
         await self.a_agent.send_message("action", action)
+
+        escape_attempts = 0
         while self._real_hits_in_front() >= 2:
-            await asyncio.sleep(0.1)
+            if escape_attempts > 0:
+                # Si ya intentó girar y sigue encallado, retrocede primero
+                await self.a_agent.send_message("action", "mb")
+                await asyncio.sleep(0.5)
+                await self.a_agent.send_message("action", "stop")
+            
+            await self.a_agent.send_message("action", action)
+            await asyncio.sleep(0.3)
+            await self.a_agent.send_message("action", "stop")
+            escape_attempts += 1
+
         await self.a_agent.send_message("action", "stop")
 
     async def run(self):
