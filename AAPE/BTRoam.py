@@ -32,101 +32,6 @@ class BN_DoNothing(pt.behaviour.Behaviour):
         # Finishing the behaviour, therefore we have to stop the associated task
         self.my_goal.cancel()
 
-class BN_ForwardRandom(pt.behaviour.Behaviour):
-    def __init__(self, aagent):
-        self.my_goal = None
-        # print("Initializing BN_ForwardRandom")
-        super(BN_ForwardRandom, self).__init__("BN_ForwardRandom")
-        self.logger.debug("Initializing BN_ForwardRandom")
-        self.my_agent = aagent
-
-    def initialise(self):
-        self.logger.debug("Create Goals_BT.ForwardDist task")
-        self.my_goal = asyncio.create_task(Goals_BT_Basic.ForwardDist(self.my_agent, 0.6, 3, 6).run())
-
-    def update(self):
-        if not self.my_goal.done():
-            return pt.common.Status.RUNNING
-        else:
-            if self.my_goal.result():
-                self.logger.debug("BN_ForwardRandom completed with SUCCESS")
-                # print("BN_ForwardRandom completed with SUCCESS")
-                return pt.common.Status.SUCCESS
-            else:
-                self.logger.debug("BN_ForwardRandom completed with FAILURE")
-                # print("BN_ForwardRandom completed with FAILURE")
-                return pt.common.Status.FAILURE
-
-    def terminate(self, new_status: pt.common.Status):
-        # Finishing the behaviour, therefore we have to stop the associated task
-        self.logger.debug("Terminate BN_ForwardRandom")
-        self.my_goal.cancel()
-
-
-class BN_Turn(pt.behaviour.Behaviour):
-    def __init__(self, aagent):
-        self.my_goal = None
-        # print("Initializing BN_Turn")
-        super(BN_Turn, self).__init__("BN_Turn")
-        self.my_agent = aagent
-
-    def initialise(self):
-        self.my_goal = asyncio.create_task(Goals_BT_Basic.Turn(self.my_agent).run())
-
-    def update(self):
-        if not self.my_goal.done():
-            return pt.common.Status.RUNNING
-        else:
-            res = self.my_goal.result()
-            if res:
-                # print("BN_Turn completed with SUCCESS")
-                return pt.common.Status.SUCCESS
-            else:
-                # print("BN_Turn completed with FAILURE")
-                return pt.common.Status.FAILURE
-
-    def terminate(self, new_status: pt.common.Status):
-        # Finishing the behaviour, therefore we have to stop the associated task
-        self.logger.debug("Terminate BN_Turn")
-        self.my_goal.cancel()
-
-class BN_DetectObstacle(pt.behaviour.Behaviour):
-    def __init__(self, aagent):
-        super(BN_DetectObstacle, self).__init__("BN_DetectObstacle")
-        self.my_agent = aagent
-
-    def initialise(self):
-        pass
-
-    def update(self):
-        # Do not interrupt if it is already turning
-        # if self.my_agent.i_state.isRotatingRight or self.my_agent.i_state.isRotatingLeft:
-        #     return pt.common.Status.RUNNING  # deja que el Turn actual termine
-
-        sensor = self.my_agent.rc_sensor
-
-        def max_consecutive_hits():
-            max_consec = 0
-            current = 0
-            for i in range(sensor.num_rays):
-                hit = sensor.sensor_rays[Sensors.RayCastSensor.HIT][i]
-                obj_info = sensor.sensor_rays[Sensors.RayCastSensor.OBJECT_INFO][i]
-                is_flower = obj_info and obj_info.get("tag") == "AlienFlower"
-                if hit and not is_flower:
-                    current += 1
-                    max_consec = max(max_consec, current)
-                else:
-                    current = 0
-            return max_consec
-
-        if max_consecutive_hits() >= 2:  
-            print("Obstacle detected!")
-            return pt.common.Status.SUCCESS
-            
-        return pt.common.Status.FAILURE
-
-    def terminate(self, new_status: pt.common.Status):
-        pass
 
 class BN_AvoidObstacle(pt.behaviour.Behaviour):
     def __init__(self, aagent):
@@ -298,30 +203,7 @@ class BTRoam:
 
         self.aagent = aagent
 
-        # VERSION 1 (Alone TODO:delete these classes and tree)
-        # detection = pt.composites.Sequence(name="DetectFlower", memory=True)
-        # detection.add_children([BN_DetectFlower(aagent), BN_GoToFlower(aagent)])
-
-        # obstacle = pt.composites.Sequence("Obstacle", memory=True)
-        # obstacle.add_children([BN_DetectObstacle(aagent), BN_Turn(aagent)])
-
-        # roaming = pt.composites.Selector("Roaming", memory=False)
-        # roaming.add_children([obstacle, BN_ForwardRandom(aagent)])
-
-        # # Inventory Full: Go back to base
-        # full = pt.composites.Sequence("Full", memory=True)
-        # full.add_children([BN_CheckInventoryFull(aagent), BN_ReturnToBase(aagent)])
-
-        # not_full = pt.composites.Selector("NotFull", memory=False)
-        # not_full.add_children([detection, roaming])
-
-        # self.root = pt.composites.Selector(name="BTRoam", memory=False)
-        # self.root.add_children([full, not_full])
-
-        # self.behaviour_tree = pt.trees.BehaviourTree(self.root)
-
-
-        # VERSION 2 (Alone with avoid)
+        # VERSION 1 (Alone with avoid)
         # detection = pt.composites.Sequence(name="DetectFlower", memory=True)
         # detection.add_children([BN_DetectFlower(aagent), BN_GoToFlower(aagent)])
 
@@ -333,7 +215,7 @@ class BTRoam:
 
         # self.behaviour_tree = pt.trees.BehaviourTree(self.root)
         
-        # VERSION 3 (Collect and run)
+        # VERSION 2 (Collect and run)
         frozen = pt.composites.Sequence(name='DetectFrozen', memory=True)
         frozen.add_children([BN_DetectFrozen(aagent), BN_DoNothing(aagent)])
 

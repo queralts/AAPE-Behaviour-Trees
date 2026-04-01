@@ -521,8 +521,8 @@ class AvoidObstacle:
         hits = 0
         for _, ray in enumerate(zip(*self.rc_sensor.sensor_rays)):
             if -30 <= ray[Sensors.RayCastSensor.ANGLE] <= 30:
-                is_flower = (ray[Sensors.RayCastSensor.OBJECT_INFO] and
-                             ray[Sensors.RayCastSensor.OBJECT_INFO].get("tag") == "AlienFlower")
+                obj = ray[Sensors.RayCastSensor.OBJECT_INFO]
+                is_flower = obj and obj.get("tag") == "AlienFlower"
                 if ray[Sensors.RayCastSensor.HIT] == 1 and not is_flower:
                     hits += 1
         return hits
@@ -537,28 +537,38 @@ class AvoidObstacle:
                     left_hits += 1
                 else:
                     right_hits += 1
-        return "right" if left_hits > right_hits else "left"
+        if left_hits > right_hits:
+            return "right"
+        elif right_hits > left_hits:
+            return "left"
+        else:
+            return random.choice(["left", "right"])
 
     async def _turn_until_clear(self):
         direction = self._choose_turn_direction()
         action = "tl" if direction == "left" else "tr"
+
         await self.a_agent.send_message("action", action)
 
-        escape_attempts = 0
-        while self._real_hits_in_front() >= 2:
-            if escape_attempts > 0:
-                # Si ya intentó girar y sigue encallado, retrocede primero
-                await self.a_agent.send_message("action", "mb")
-                await asyncio.sleep(0.5)
+        turn_time = 0
+        max_turn_time = 2.0  # segundos máximo girando seguido
+
+        while True:
+            if self._real_hits_in_front() < 2:
+                break
+
+            await asyncio.sleep(0.1)
+            turn_time += 0.1
+
+            if turn_time >= max_turn_time:
+                # escape forzado
                 await self.a_agent.send_message("action", "stop")
-            
-            await self.a_agent.send_message("action", action)
-            await asyncio.sleep(0.3)
-            await self.a_agent.send_message("action", "stop")
-            escape_attempts += 1
+                await self.a_agent.send_message("action", "mb")
+                await asyncio.sleep(2.0)
+                await self.a_agent.send_message("action", "stop")
+                return  # salir directamente
 
         await self.a_agent.send_message("action", "stop")
-
     async def run(self):
         self.state = self.STOPPED
         try:
@@ -678,7 +688,7 @@ class ChaseAstronaut:
                             break
                         # If there are obstacles stop and finish
                         hits = self.rc_sensor.sensor_rays[Sensors.RayCastSensor.HIT]
-                        if any(hits[i] for i in range(len(hits))):
+                        if sum(hits[i] for i in range(len(hits)))>=3:
                             break
 
                         await asyncio.sleep(0.2)
@@ -688,11 +698,6 @@ class ChaseAstronaut:
 
         except asyncio.CancelledError:
             await self.a_agent.send_message("action", "stop")
-
-
-
-
-                    
 
 
 
