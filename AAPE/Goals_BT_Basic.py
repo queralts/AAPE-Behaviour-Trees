@@ -316,12 +316,13 @@ class ReturnToBase:
     def __init__(self, a_agent):
         self.a_agent = a_agent
         self.i_state = a_agent.i_state
+        self.base_name = "Base" + a_agent.AgentParameters["team"]
 
     async def run(self):
         try:
             await self.a_agent.send_message("action", "stop")
-            print("RETURNING TO BASE BY WALKING")
-            await self.a_agent.send_message("action", "walk_to,BaseAlpha")
+            print(f"RETURNING TO BASE BY WALKING ({self.base_name})")
+            await self.a_agent.send_message("action", f"walk_to,{self.base_name}")
 
             # Wait for the navmesh to actually start the route
             # for _ in range(10):
@@ -428,6 +429,9 @@ class Avoid:
         else:
             await self.a_agent.send_message("action", "tr")
 
+        turn_time = 0.0
+        max_turn_time = 2.0
+
         while True:
             front_sensors = []
             for index, ray in enumerate(zip(*self.rc_sensor.sensor_rays)):
@@ -436,6 +440,16 @@ class Avoid:
 
             if any(ray[Sensors.RayCastSensor.HIT] == 1 for ray in front_sensors):
                 await asyncio.sleep(0.1)
+                turn_time += 0.1
+
+                if turn_time >= max_turn_time:
+                    # force scape
+                    await self.a_agent.send_message("action", "stop")
+                    await self.a_agent.send_message("action", "mb")
+                    await asyncio.sleep(2.0)
+                    await self.a_agent.send_message("action", "stop")
+                    return  # exit directly
+
             else:
                 break
         
@@ -551,7 +565,7 @@ class AvoidObstacle:
         await self.a_agent.send_message("action", action)
 
         turn_time = 0
-        max_turn_time = 2.0  # segundos máximo girando seguido
+        max_turn_time = 2.0  # max seconds turning continuously
 
         while True:
             if self._real_hits_in_front() < 2:
@@ -561,14 +575,15 @@ class AvoidObstacle:
             turn_time += 0.1
 
             if turn_time >= max_turn_time:
-                # escape forzado
+                # force scape
                 await self.a_agent.send_message("action", "stop")
                 await self.a_agent.send_message("action", "mb")
                 await asyncio.sleep(2.0)
                 await self.a_agent.send_message("action", "stop")
-                return  # salir directamente
+                return  # exit directly
 
         await self.a_agent.send_message("action", "stop")
+    
     async def run(self):
         self.state = self.STOPPED
         try:
@@ -608,7 +623,7 @@ class ChaseAstronaut:
     def __init__(self, a_agent):
         self.a_agent = a_agent
         self.rc_sensor = a_agent.rc_sensor
-        self.threshold = 0.5
+        self.threshold = 0.8
         self.current_turn = None
 
     async def run(self):
