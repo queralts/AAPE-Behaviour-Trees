@@ -2,28 +2,32 @@
 
 Behaviour tree-based autonomous agents for the AAPE (Autonomous Agents Programming Environment) simulation. Agents (astronauts and critters) navigate a 3D environment, collect resources, and interact with each other using behaviour trees built with [py_trees](https://py-trees.readthedocs.io/).
 
-Developed for the **Autonomous Agents** course (2025-26), Degree in Artificial Intelligence, UAB.
-
 ## Scenarios
 
-### Alone
+### 🧑‍🚀🌹 Alone
 A single astronaut roams the map collecting AlienFlowers and returning them to base. The behaviour tree prioritises:
 1. **Full inventory** — return to base and unload when carrying 2+ flowers
 2. **Flower detection** — approach and collect detected flowers
 3. **Obstacle avoidance** — roam while avoiding obstacles (ignoring flowers)
 
-### Critters
+![Astronaut Agent Alone Scenario BehaviourTree](AAPE/visualizations/btroam_alone.png)
+
+### 👾 Critters
 Critter agents (CritterMantaRay) roam the environment chasing astronauts. The behaviour tree prioritises:
 1. **Chase** — detect and pursue nearby astronauts, then move away after reaching them
-2. **Roam** — avoid all obstacles (including flowers) with random exploration
+2. **Roam (BN_Avoid)** — avoid all obstacles (including flowers) with random exploration
 
-### Collect-and-Run
+![CritterMantaRay Agent BehaviourTree](AAPE/visualizations/btcritter.png)
+
+### 🌹🏃‍♀️👾 Collect-and-Run
 Extends the Alone scenario with critter awareness. The behaviour tree prioritises:
 1. **Frozen handling** — remain inactive while frozen by a critter hit
 2. **Flee** — detect and run away from nearby critters
 3. **Full inventory** — return to base (re-checks condition each tick in case flowers are lost)
 4. **Flower detection** — collect flowers
 5. **Obstacle avoidance** — default roaming behaviour
+
+![Astronaut Agent Collect-and-Run Scenario BehaviourTree](AAPE/visualizations/btroam_collectandrun.png)
 
 ## Project Structure
 
@@ -36,8 +40,7 @@ AAPE/
 ├── Sensors.py            # Ray-cast sensor interface
 ├── Spawner.py            # Multi-agent launcher
 ├── AAgent-*.json         # Agent configuration files
-├── APack*.json           # Multi-agent pack configurations
-└── V0.4.1-AAPE-Mac.app   # AAPE simulation environment (macOS)
+└── APack*.json           # Multi-agent pack configurations
 ```
 
 ## Setup
@@ -79,7 +82,7 @@ The `ray_perception_sensor_param` array: `[rays_per_direction, max_degrees, sphe
 
 Default: `[2, 45, 0, 5]` — 5 rays spanning 90 degrees with a range of 5 units.
 
-## Authors
+## 👤 Authors
 
 - Queralt Salvadó Hernández
 - Yaira Brudenell Guedella
