@@ -391,7 +391,8 @@ class FleeFromCritter:
 
             turn_action = "tl" if critter_angle >= 0 else "tr"
             await self.a_agent.send_message("action", turn_action)
-            await asyncio.sleep(0.5)
+            await self.a_agent.send_message("action", "mf")
+            await asyncio.sleep(0.6)
             await self.a_agent.send_message("action", "stop")
 
             # Move forward reactively for 1.5 seconds avoiding obstacles
