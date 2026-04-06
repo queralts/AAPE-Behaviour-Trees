@@ -324,11 +324,7 @@ class ReturnToBase:
             print(f"RETURNING TO BASE BY WALKING ({self.base_name})")
             await self.a_agent.send_message("action", f"walk_to,{self.base_name}")
 
-            # Wait for the navmesh to actually start the route
-            # for _ in range(10):
-            #     if self.i_state.onRoute:
-            #         break
-            #     await asyncio.sleep(0.2)
+            # Wait for the navmesh to start the route
             for _ in range(20):
                 if self.i_state.onRoute:
                     break
@@ -351,45 +347,77 @@ class FleeFromCritter:
     def __init__(self, a_agent):
         self.a_agent = a_agent
         self.rc_sensor = a_agent.rc_sensor
-        self.i_state = a_agent.i_state
+
+    def _obstacle_hits_by_side(self, cone=30):
+        """Count non-critter hits in the frontal cone, split by side."""
+        left_hits, right_hits = 0, 0
+        for ray in zip(*self.rc_sensor.sensor_rays):
+            angle = ray[Sensors.RayCastSensor.ANGLE]
+            obj = ray[Sensors.RayCastSensor.OBJECT_INFO]
+            hit = ray[Sensors.RayCastSensor.HIT]
+            is_critter = obj and obj.get("tag") == "CritterMantaRay"
+            if hit == 1 and not is_critter and abs(angle) <= cone:
+                if angle < 0:
+                    left_hits += 1
+                else:
+                    right_hits += 1
+        return left_hits, right_hits
+
+    def _front_obstacle_hits(self, cone=30):
+        left, right = self._obstacle_hits_by_side(cone)
+        return left + right
 
     async def run(self):
         try:
-            # Small delay to let previous behavior's cancellation flush
-            await asyncio.sleep(0.05)
+            await asyncio.sleep(0.05) 
 
-            # Search for closest critter (retry a few times if sensors haven't updated)
+            # Find closest critter with a timeout to give time to the sensors to update
+            MAX_WAIT = 0.2   # seconds
+            WAIT_RETRY = 0.02
             critter_angle = None
-            critter_dist = float('inf')
 
-            for _ in range(10):
-                sensor_obj_info = self.rc_sensor.sensor_rays[Sensors.RayCastSensor.OBJECT_INFO]
-                for index, value in enumerate(sensor_obj_info):
-                    if value and value["tag"] == "CritterMantaRay":
-                        dist = self.rc_sensor.sensor_rays[Sensors.RayCastSensor.DISTANCE][index]
-                        if dist < critter_dist:
-                            critter_dist = dist
-                            critter_angle = self.rc_sensor.sensor_rays[Sensors.RayCastSensor.ANGLE][index]
+            for _ in range(int(MAX_WAIT / WAIT_RETRY)):
+                for ray in zip(*self.rc_sensor.sensor_rays):
+                    obj = ray[Sensors.RayCastSensor.OBJECT_INFO]
+                    angle = ray[Sensors.RayCastSensor.ANGLE]
+                    if obj and obj.get("tag") == "CritterMantaRay":
+                        critter_angle = angle
                 if critter_angle is not None:
                     break
-                await asyncio.sleep(0.02)
+                await asyncio.sleep(WAIT_RETRY)
 
             if critter_angle is None:
                 return False
 
-            # Turn in the opposite direction to the Critter
-            if critter_angle >= 0:  # Critter to the right or front: turn left
-                await self.a_agent.send_message("action", "tl")
-            else:  # Critter to the left: turn right
-                await self.a_agent.send_message("action", "tr")
+            turn_action = "tl" if critter_angle >= 0 else "tr"
+            await self.a_agent.send_message("action", turn_action)
+            await asyncio.sleep(0.7)
+            await self.a_agent.send_message("action", "stop")
 
-            await asyncio.sleep(0.4)
-
-            # Move away
+            # Move forward reactively for 1.5 seconds avoiding obstacles
             await self.a_agent.send_message("action", "mf")
-            await asyncio.sleep(1.0)
-            await self.a_agent.send_message("action", "ntm")
 
+            flee_start = asyncio.get_event_loop().time()
+            while asyncio.get_event_loop().time() - flee_start < 1.5:
+                await asyncio.sleep(0.1)
+
+                if self._front_obstacle_hits() >= 2:
+                    await self.a_agent.send_message("action", "stop")
+
+                    # Steer away from the more blocked side
+                    left_hits, right_hits = self._obstacle_hits_by_side()
+                    steer = "tr" if left_hits > right_hits else "tl"
+                    await self.a_agent.send_message("action", steer)
+
+                    steer_time = 0
+                    while self._front_obstacle_hits() >= 2 and steer_time < 2.0:  # maximum 2 seconds turning
+                        await asyncio.sleep(0.1)
+                        steer_time += 0.1
+
+                    await self.a_agent.send_message("action", "stop")
+                    await self.a_agent.send_message("action", "mf")
+
+            await self.a_agent.send_message("action", "ntm")
             return True
 
         except asyncio.CancelledError:
