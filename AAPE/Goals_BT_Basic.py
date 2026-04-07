@@ -475,7 +475,7 @@ class Avoid:
                     # force scape
                     await self.a_agent.send_message("action", "stop")
                     await self.a_agent.send_message("action", "mb")
-                    await asyncio.sleep(2.0)
+                    await asyncio.sleep(0.5)
                     await self.a_agent.send_message("action", "stop")
                     return  # exit directly
 
