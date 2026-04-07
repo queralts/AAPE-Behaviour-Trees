@@ -496,7 +496,7 @@ class Avoid:
                             if -30 <= ray[Sensors.RayCastSensor.ANGLE] <= 30:
                                 front_sensors.append(ray)
                         
-                        if sum(ray[Sensors.RayCastSensor.HIT] == 1 for ray in front_sensors) >= 2:
+                        if any(ray[Sensors.RayCastSensor.HIT] == 1 for ray in front_sensors):
                             await self.turn_until_clear()
                         else:
                             break
@@ -521,23 +521,23 @@ class Avoid:
                             if -30 <= ray[Sensors.RayCastSensor.ANGLE] <= 30:
                                 front_sensors.append(ray)
                     
-                        if sum(ray[Sensors.RayCastSensor.HIT] == 1 for ray in front_sensors) >= 2:
+                        if any(ray[Sensors.RayCastSensor.HIT] == 1 for ray in front_sensors):
                             break
                         else:
                             await asyncio.sleep(0.1)
-                    
+
                     await self.a_agent.send_message("action", "stop")
                     self.state = self.AVOIDING
-                
+
                 elif self.state == self.AVOIDING:
-                    
+
                     while True:
                         front_sensors = []
                         for _, ray in enumerate(zip(*self.rc_sensor.sensor_rays)):
                             if -30 <= ray[Sensors.RayCastSensor.ANGLE] <= 30:
                                 front_sensors.append(ray)
-                        
-                        if sum(ray[Sensors.RayCastSensor.HIT] == 1 for ray in front_sensors) >= 2:
+
+                        if any(ray[Sensors.RayCastSensor.HIT] == 1 for ray in front_sensors):
                             await self.turn_until_clear()
                         else:
                             break
@@ -683,6 +683,7 @@ class ChaseAstronaut:
 
                             if distance < self.threshold:
                                 await self.a_agent.send_message("action", "ntm")
+                                self.astronaut_angle = angle
                                 self.state = self.MOVE_AWAY
                                 break
 
@@ -715,15 +716,28 @@ class ChaseAstronaut:
 
                     await self.a_agent.send_message("action", "stop")
 
-                    # Turn in the opposite direction to the astronaut
-                    action = random.choice(["tl", "tr"])
-                    await self.a_agent.send_message("action", action)
-                    await asyncio.sleep(random.uniform(0.4, 1.0))
+                    # Turn 180° away from the astronaut
+                    # Compute target heading: current heading + astronaut_angle + 180
+                    current_yaw = self.a_agent.i_state.rotation['y']
+                    target_yaw = (current_yaw + self.astronaut_angle + 180) % 360
+
+                    # Turn away from the astronaut's side
+                    turn_action = "tl" if self.astronaut_angle >= 0 else "tr"
+                    await self.a_agent.send_message("action", turn_action)
+
+                    # Keep turning until we reach approximately the target heading
+                    while True:
+                        await asyncio.sleep(0.05)
+                        current_yaw = self.a_agent.i_state.rotation['y']
+                        diff = (target_yaw - current_yaw + 180) % 360 - 180
+                        if abs(diff) < 10:
+                            break
+
                     await self.a_agent.send_message("action", "nt")
                     
                     # Move until far enough
                     await self.a_agent.send_message("action", "mf")
-                    min_distance = 1.5  # minimum distance to move away
+                    min_distance = 3  # minimum distance to move away
                     start_pos = dict(self.a_agent.i_state.position)
                     
                     while True:
