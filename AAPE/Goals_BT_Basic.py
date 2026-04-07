@@ -607,7 +607,7 @@ class AvoidObstacle:
                 # force scape
                 await self.a_agent.send_message("action", "stop")
                 await self.a_agent.send_message("action", "mb")
-                await asyncio.sleep(2.0)
+                await asyncio.sleep(0.5)
                 await self.a_agent.send_message("action", "stop")
                 return  # exit directly
 
@@ -723,7 +723,7 @@ class ChaseAstronaut:
                     
                     # Move until far enough
                     await self.a_agent.send_message("action", "mf")
-                    min_distance = 3.0  # minimum distance to move away
+                    min_distance = 1.5  # minimum distance to move away
                     start_pos = dict(self.a_agent.i_state.position)
                     
                     while True:
