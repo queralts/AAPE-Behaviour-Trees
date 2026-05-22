@@ -96,6 +96,7 @@ class InternalState:
         self.myInventoryList = []
         self.nearbyContainerInventory = False
         self.nearbyContainerInventoryList = []
+        self.starting_base = ""
 
     def update_internal_state(self, sensor_info, i_state_dict):
         self.isRotatingRight = i_state_dict["isRotatingRight"]
@@ -112,6 +113,10 @@ class InternalState:
         self.myInventoryList = i_state_dict["myInventoryList"]
         self.nearbyContainerInventory = i_state_dict["nearbyContainerInventory"]
         self.nearbyContainerInventoryList = i_state_dict["nearbyContainerInventoryList"]
+
+        # Capture starting base on first sensor update
+        if not self.starting_base and self.currentNamedLoc:
+            self.starting_base = self.currentNamedLoc
 
         # Agent TK GUI
         if active_tk_gui:

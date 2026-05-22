@@ -316,7 +316,7 @@ class ReturnToBase:
     def __init__(self, a_agent):
         self.a_agent = a_agent
         self.i_state = a_agent.i_state
-        self.base_name = "Base" + a_agent.AgentParameters["team"]
+        self.base_name = self.i_state.starting_base
 
     async def run(self):
         try:
