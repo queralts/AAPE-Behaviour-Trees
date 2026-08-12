@@ -2,24 +2,37 @@
 
 Behaviour tree-based autonomous agents for the AAPE (Autonomous Agents Programming Environment) simulation. Agents (astronauts and critters) navigate a 3D environment, collect resources, and interact with each other using behaviour trees built with [py_trees](https://py-trees.readthedocs.io/).
 
-## Scenarios
 
-### 🧑‍🚀🌹 Alone
-A single astronaut roams the map collecting AlienFlowers and returning them to base. The behaviour tree prioritises:
+## Demo
+<p align="center">
+  <img src="AAPE/visualizations/video.gif" alt="Demo" height="300">
+</p>
+
+## Agent Behaviours
+
+### 🧑‍🚀🌹 Astronaut: Flower Collection
+A lone astronaut roams the map collecting AlienFlowers and returning them to base. The behaviour tree prioritises:
 1. **Full inventory** — return to base and unload when carrying 2+ flowers
 2. **Flower detection** — approach and collect detected flowers
 3. **Obstacle avoidance** — roam while avoiding obstacles (ignoring flowers)
 
-![Astronaut Agent Alone Scenario BehaviourTree](AAPE/visualizations/btroam_alone.png)
+<p align="center">
+  <img src="AAPE/visualizations/btroam_alone.png" alt="Astronaut Agent Alone Scenario BehaviourTree">
+</p>
 
-### 👾 Critters
-Critter agents (CritterMantaRay) roam the environment chasing astronauts. The behaviour tree prioritises:
+--- 
+### 👾 Critter: Pursuit and Exploration
+Critter agents roam the environment chasing astronauts. The behaviour tree prioritises:
 1. **Chase** — detect and pursue nearby astronauts, then move away after reaching them
 2. **Roam (BN_Avoid)** — avoid all obstacles (including flowers) with random exploration
 
-![CritterMantaRay Agent BehaviourTree](AAPE/visualizations/btcritter.png)
+<p align="center">
+  <img src="AAPE/visualizations/btcritter.png" alt="CritterMantaRay Agent BehaviourTree">
+</p>
 
-### 🌹🏃‍♀️👾 Collect-and-Run
+--- 
+
+### 🌹🏃‍♀️👾 Astronaut: Collect and Escape
 Extends the Alone scenario with critter awareness. The behaviour tree prioritises:
 1. **Frozen handling** — remain inactive while frozen by a critter hit
 2. **Flee** — detect and run away from nearby critters
@@ -27,7 +40,9 @@ Extends the Alone scenario with critter awareness. The behaviour tree prioritise
 4. **Flower detection** — collect flowers
 5. **Obstacle avoidance** — default roaming behaviour
 
-![Astronaut Agent Collect-and-Run Scenario BehaviourTree](AAPE/visualizations/btroam_collectandrun.png)
+<p align="center">
+  <img src="AAPE/visualizations/btroam_collectandrun.png" alt="Astronaut Agent Collect-and-Run Scenario BehaviourTree">
+</p>
 
 ## Project Structure
 
@@ -49,6 +64,7 @@ AAPE/
 - Python 3.8+
 - AAPE simulation environment running locally
 
+
 ### Installation
 
 Dependencies: `py-trees==2.4.0`, `aiohttp==3.13.3`
@@ -66,7 +82,7 @@ Dependencies: `py-trees==2.4.0`, `aiohttp==3.13.3`
    cd AAPE
    python Spawner.py APackAstroCritters.json
    ```
-
+--- 
 ### Configuration Files
 
 Each agent config (`AAgent-*.json`) specifies:
@@ -76,6 +92,7 @@ Each agent config (`AAgent-*.json`) specifies:
 
 Pack configs (`APack*.json`) define groups of agents to spawn together. For example, `APackAstroCritters.json` spawns 1 astronaut and 10 critters.
 
+--- 
 ### Sensor Configuration
 
 The `ray_perception_sensor_param` array: `[rays_per_direction, max_degrees, sphere_cast_radius, ray_length]`
